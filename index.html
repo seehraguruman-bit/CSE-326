@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Document metadata and the app's local assets -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1c1240">
+  <meta name="description" content="A retro arcade artist and stage management system for music festivals.">
+  <title>FEST.EXE — Music Festival Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <!-- Keyboard skip link and sticky game HUD -->
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="hud">
+    <a class="logo" href="#hero" aria-label="FEST.EXE home">FEST<span>.</span>EXE</a>
+
+    <div class="hud-stats" aria-label="Game status">
+      <span>SCORE <b id="score">000000</b></span>
+      <span>LEVEL <b id="level">1/6</b></span>
+      <span class="lives" aria-label="3 lives"><b id="hearts">♥♥♥</b></span>
+    </div>
+
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="#artists">Artists</a><a href="#stages">Stages</a>
+      <a href="#schedule">Schedule</a><a href="#conflicts">Conflicts</a>
+    </nav>
+
+    <button class="sound-toggle" id="sound-toggle" type="button" aria-label="Turn sound on" title="Sound off">MUTE</button>
+  </header>
+
+  <main id="main">
+    <!-- Level 1: landing page and pixel-art stage -->
+    <section class="hero level-section" id="hero" data-level="1">
+      <div class="hero-copy">
+        <p class="eyebrow">▶ FESTIVAL MANAGER <span class="coin" aria-hidden="true">●</span></p>
+        <h1><span>FESTIVAL</span><em>ARCADE</em></h1>
+        <p class="hero-tagline">A RETRO ARTIST &amp; STAGE<br>MANAGEMENT SYSTEM</p>
+        <p class="hero-description">Build your lineup. Own the night. Keep every stage in sync.</p>
+
+        <div class="hero-actions">
+          <a class="button button-primary" href="#artists">▶ PRESS START</a>
+          <a class="button button-secondary" href="#schedule">VIEW SCHEDULE</a>
+        </div>
+
+        <p class="insert-coin">INSERT COIN TO BEGIN <span class="blink">_</span></p>
+      </div>
+
+      <div class="stage-art-frame" aria-label="Pixel-art festival stage">
+        <div class="frame-label">PLAYER 1 <span>● ● ●</span></div>
+        <div class="pixel-stage" aria-hidden="true">
+          <div class="stage-sky"><i class="pixel-star star-one"></i><i class="pixel-star star-two"></i><i class="pixel-star star-three"></i></div>
+          <div class="stage-truss"><i></i><i></i><i></i></div>
+          <div class="stage-curtain"></div><div class="stage-lights"><i></i><i></i><i></i></div>
+          <div class="stage-deck"><i class="performer"></i><i class="performer second"></i><i class="speaker left"></i><i class="speaker right"></i></div>
+          <div class="crowd"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="frame-caption">TONIGHT'S MAIN EVENT <span>★ LIVE ★</span></div>
+      </div>
+    </section>
+
+    <!-- Level 2: artist roster, search, filters, and sorting -->
+    <section class="section level-section" id="artists" data-level="2">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">◆ POWER-UPS</p>
+          <h2>ARTIST ROSTER</h2>
+        </div>
+        <button class="button button-primary" id="add-artist" type="button">▶ ADD ARTIST</button>
+      </div>
+
+      <div class="roster-toolbar">
+        <label class="search-wrap"><span class="sr-only">Search artists</span><input id="artist-search" type="search" placeholder="SEARCH ARTISTS..."></label>
+        <label><span class="sr-only">Filter by genre</span><select id="genre-filter"><option value="">ALL GENRES</option></select></label>
+        <label><span class="sr-only">Sort artists</span><select id="artist-sort"><option value="name">SORT: NAME</option><option value="genre">SORT: GENRE</option><option value="country">SORT: COUNTRY</option></select></label>
+      </div>
+
+      <div class="artist-grid" id="artist-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- Level 3: stage capacity, equipment, and utilization -->
+    <section class="section level-section" id="stages" data-level="3">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">◆ SAVE FILES</p>
+          <h2>STAGE SELECT</h2>
+        </div>
+        <button class="button button-primary" id="add-stage" type="button">▶ ADD STAGE</button>
+      </div>
+
+      <div class="stage-grid" id="stage-grid" aria-live="polite"></div>
+    </section>
+
+    <!-- Level 4: day tabs and interactive performance timeline -->
+    <section class="section level-section" id="schedule" data-level="4">
+      <div class="section-heading schedule-heading">
+        <div>
+          <p class="eyebrow">◆ LEVEL MAP</p>
+          <h2>LIVE SCHEDULE</h2>
+        </div>
+        <button class="button button-primary" id="add-slot" type="button">▶ ADD SLOT</button>
+      </div>
+
+      <div class="schedule-tools">
+        <div class="day-tabs" role="tablist" aria-label="Festival day">
+          <button class="day-tab is-active" role="tab" aria-selected="true" data-day="1" type="button">DAY 1</button>
+          <button class="day-tab" role="tab" aria-selected="false" data-day="2" type="button">DAY 2</button>
+          <button class="day-tab" role="tab" aria-selected="false" data-day="3" type="button">DAY 3</button>
+        </div>
+        <label><span class="sr-only">Filter schedule by stage</span><select id="stage-filter"><option value="">ALL STAGES</option></select></label>
+        <p class="drag-hint">DRAG A SLOT TO MOVE IT · CLICK A SLOT TO EDIT</p>
+      </div>
+
+      <div class="timeline-card">
+        <div class="timeline-scroll" id="timeline" aria-label="Schedule timeline"></div>
+      </div>
+
+      <div class="schedule-legend"><span><i class="legend-dot blue"></i> ELECTRONIC</span><span><i class="legend-dot green"></i> INDIE / ROCK</span><span><i class="legend-dot violet"></i> OTHER</span><span><i class="legend-dot red"></i> CONFLICT</span></div>
+    </section>
+
+    <!-- Level 5: active scheduling conflicts -->
+    <section class="section level-section" id="conflicts" data-level="5">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">◆ BOSS FIGHTS</p>
+          <h2>CONFLICT ZONE</h2>
+        </div>
+        <span class="conflict-counter" id="conflict-counter">0 ACTIVE</span>
+      </div>
+
+      <div class="conflict-list" id="conflict-list" aria-live="polite"></div>
+    </section>
+
+    <!-- Level 6: summary, export, print, and reset actions -->
+    <section class="final-section level-section" id="final" data-level="6">
+      <div class="final-inner">
+        <p class="eyebrow">◆ HIGH SCORE BOARD</p>
+        <h2>FESTIVAL STATUS</h2>
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <div class="closing-card">
+          <div class="closing-copy">
+            <p class="eyebrow">◆ NEXT STAGE</p>
+            <h3>GAME OVER?<br><span>LET'S BUILD WHAT'S NEXT.</span></h3>
+            <p>Your festival data is saved right here in this browser.</p>
+          </div>
+
+          <div class="closing-actions">
+            <button class="button button-primary" id="export-json" type="button">▶ EXPORT JSON</button>
+            <button class="button button-dark" id="print-schedule" type="button">PRINT SCHEDULE</button>
+            <button class="button button-danger" id="reset-data" type="button">RESET DEMO DATA</button>
+          </div>
+        </div>
+
+        <p class="footer-note">FEST.EXE // PRESS START TO PLAY AGAIN <span>© FESTIVAL CREW</span></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Persistent arcade effects and announcement regions -->
+  <div class="floor-sprite" aria-hidden="true">
+    <div class="walker"><i></i><b></b></div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="confetti-layer" id="confetti-layer" aria-hidden="true"></div>
+
+  <!-- Game-over overlay -->
+  <div class="game-over" id="game-over" role="dialog" aria-modal="true" aria-labelledby="game-over-title" hidden>
+    <div class="game-over-card">
+      <p class="eyebrow">◆ PLAYER DOWN</p>
+      <h2 id="game-over-title">GAME OVER</h2>
+      <p>FIX YOUR CONFLICTS TO RESTORE YOUR LIVES.</p>
+      <button class="button button-primary" id="continue-game" type="button">▶ CONTINUE?</button>
+    </div>
+  </div>
+
+  <!-- Reusable artist, stage, and performance editor -->
+  <dialog class="pixel-dialog" id="editor-dialog" aria-labelledby="dialog-title">
+    <form id="editor-form" novalidate>
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow" id="dialog-eyebrow">◆ PLAYER SETUP</p>
+          <h2 id="dialog-title">ADD ARTIST</h2>
+        </div>
+        <button class="icon-button" id="close-dialog" type="button" aria-label="Close dialog">×</button>
+      </div>
+
+      <div id="form-fields" class="form-fields"></div>
+      <div id="slot-preview" class="slot-preview" role="status" aria-live="polite" hidden></div>
+      <p class="form-error" id="form-error" role="alert"></p>
+
+      <div class="dialog-actions">
+        <button class="button button-dark" id="cancel-dialog" type="button">CANCEL</button>
+        <button class="button button-primary" id="save-dialog" type="submit">▶ SAVE</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="sr-only" id="announcer" aria-live="assertive"></div>
+</body>
+</html>
