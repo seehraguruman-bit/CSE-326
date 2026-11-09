@@ -12,7 +12,6 @@
   const uid = () => `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   const seedData = () => ({
-    score: 0,
     artists: [
       { id: "a1", name: "Neon Palms", genre: "Electronic", country: "USA", setLength: 60, fee: 4200, contact: "booking@neonpalms.example", bio: "Synth-heavy sunset sets with a live visual show.", tech: ["DJ decks", "LED wall"] },
       { id: "a2", name: "The Paper Moons", genre: "Indie Rock", country: "UK", setLength: 60, fee: 3500, contact: "hello@papermoons.example", bio: "Bright guitar hooks and big festival choruses.", tech: ["Live drums", "Full backline", "Wireless mics"] },
@@ -42,6 +41,7 @@
       if (!saved) return seedData();
       const parsed = JSON.parse(saved);
       if (!Array.isArray(parsed.artists) || !Array.isArray(parsed.stages) || !Array.isArray(parsed.slots)) throw new Error("Stored festival data has an invalid shape.");
+      delete parsed.score;
       return { ...seedData(), ...parsed };
     } catch (error) {
       console.error("Could not load FEST.EXE data:", error);
@@ -49,7 +49,7 @@
     }
   }
 
-  const state = { data: loadState(), day: 1, dialogKind: null, editingId: null, soundOn: false, lastConflictCount: 0, toastTimer: null, gameOverShown: false, unlocked: new Set(), firstArtistAdded: false, firstSlotScheduled: false };
+  const state = { data: loadState(), day: 1, dialogKind: null, editingId: null, soundOn: false, toastTimer: null, unlocked: new Set(), firstArtistAdded: false, firstSlotScheduled: false };
   const saveState = () => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
     catch (error) { console.error("Could not save FEST.EXE data:", error); showToast("SAVE FAILED — CHECK BROWSER STORAGE"); }
@@ -109,28 +109,6 @@
     const available = timeToMinutes(stage.close) - timeToMinutes(stage.open);
     const booked = state.data.slots.filter(slot => slot.stageId === stage.id).reduce((total, slot) => total + Math.max(0, timeToMinutes(slot.end) - timeToMinutes(slot.start)), 0);
     return available > 0 ? Math.min(100, Math.round(booked / (available * 3) * 100)) : 0;
-  }
-
-  function renderHUD(conflicts) {
-    $("#score").textContent = String(state.data.score || 0).padStart(6, "0");
-    const hearts = Math.max(0, 3 - conflicts.length);
-    $("#hearts").textContent = "♥".repeat(hearts) + "♡".repeat(3 - hearts);
-    $("#hearts").setAttribute("aria-label", `${hearts} of 3 lives remaining`);
-    if (conflicts.length > state.lastConflictCount) {
-      $("#hearts").classList.remove("hearts-hit");
-      void $("#hearts").offsetWidth;
-      $("#hearts").classList.add("hearts-hit");
-    }
-    state.lastConflictCount = conflicts.length;
-    if (hearts === 0 && conflicts.length && !state.gameOverShown) {
-      state.gameOverShown = true;
-      $("#game-over").hidden = false;
-      $("#continue-game").focus();
-    }
-    if (hearts > 0) {
-      state.gameOverShown = false;
-      $("#game-over").hidden = true;
-    }
   }
 
   function renderArtists() {
@@ -216,26 +194,10 @@
 
   function render() {
     const conflicts = detectConflicts();
-    renderHUD(conflicts);
     renderArtists();
     renderStages();
     renderSchedule(conflicts);
     renderConflicts(conflicts);
-  }
-
-  function updateScore(amount) {
-    const before = Number(state.data.score) || 0;
-    state.data.score = Math.max(0, before + amount);
-    saveState();
-    const target = state.data.score;
-    const start = performance.now();
-    const duration = 450;
-    const tick = now => {
-      const progress = Math.min(1, (now - start) / duration);
-      $("#score").textContent = String(Math.round(before + (target - before) * progress)).padStart(6, "0");
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
   }
 
   function showToast(message) {
@@ -263,14 +225,11 @@
     unlock("ten-artists", "10 ARTISTS", state.data.artists.length >= 10);
   }
 
-  function refreshAfterMutation(oldConflicts, scoreForClear = false, events = {}) {
+  function refreshAfterMutation(oldConflicts, events = {}) {
     saveState();
     render();
     const nextConflicts = detectConflicts();
-    if (scoreForClear && nextConflicts.length < oldConflicts) {
-      updateScore(250);
-      playTone("coin");
-    }
+    if (nextConflicts.length < oldConflicts) playTone("coin");
     checkAchievements(nextConflicts.length, events);
   }
 
@@ -405,19 +364,19 @@
       state.data.slots = candidateSlots;
       state.day = item.day;
       if (!state.editingId) events.slotAdded = true;
-      if (!state.editingId && conflicts.length === 0) { updateScore(100); playTone("coin"); }
+      if (!state.editingId && conflicts.length === 0) playTone("coin");
     } else if (kind === "artist") {
       const wasNew = !state.editingId;
       const artist = { ...item, id: state.editingId || uid() };
       state.data.artists = state.editingId ? state.data.artists.map(current => current.id === artist.id ? artist : current) : [...state.data.artists, artist];
       if (wasNew) events.artistAdded = true;
-      if (wasNew) { updateScore(50); playTone("coin"); }
+      if (wasNew) playTone("coin");
     } else {
       const stage = { ...item, id: state.editingId || uid() };
       state.data.stages = state.editingId ? state.data.stages.map(current => current.id === stage.id ? stage : current) : [...state.data.stages, stage];
     }
     $("#editor-dialog").close();
-    refreshAfterMutation(previousConflicts, true, events);
+    refreshAfterMutation(previousConflicts, events);
   }
 
   function deleteEntity(kind, id) {
@@ -431,7 +390,7 @@
       state.data.stages = state.data.stages.filter(item => item.id !== id);
       state.data.slots = state.data.slots.filter(slot => slot.stageId !== id);
     }
-    refreshAfterMutation(oldCount, true);
+    refreshAfterMutation(oldCount);
   }
 
   function jumpToSlot(id) {
@@ -620,11 +579,6 @@
   }
 
   function bindArcadeEvents() {
-    $("#continue-game").addEventListener("click", () => {
-      $("#game-over").hidden = true;
-      $("#conflicts").scrollIntoView({ behavior: "smooth" });
-      setTimeout(() => $(".jump-conflict")?.focus(), 400);
-    });
     $("#sound-toggle").addEventListener("click", event => {
       state.soundOn = !state.soundOn;
       event.currentTarget.textContent = state.soundOn ? "SOUND" : "MUTE";
@@ -639,7 +593,6 @@
 
     state.data = seedData();
     state.day = 1;
-    state.lastConflictCount = 0;
     state.unlocked.clear();
     saveState();
     render();
