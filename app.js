@@ -10,6 +10,8 @@
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const uid = () => `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  let audioContext = null;
+  let tonePlayedForClick = false;
 
   const seedData = () => ({
     artists: [
@@ -233,21 +235,38 @@
     checkAchievements(nextConflicts.length, events);
   }
 
-  function playTone(type) {
+  async function playTone(type) {
     if (!state.soundOn) return;
     try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const audio = new AudioContext();
-      const oscillator = audio.createOscillator();
-      const gain = audio.createGain();
+      if (!audioContext) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) throw new Error("Web Audio API is not supported in this browser.");
+        audioContext = new AudioContext();
+      }
+
+      if (audioContext.state === "suspended") await audioContext.resume();
+      if (!state.soundOn || audioContext.state !== "running") return;
+
+      const settings = {
+        click: { frequency: 880, endFrequency: 660, duration: 0.07 },
+        coin: { frequency: 660, endFrequency: 990, duration: 0.14 },
+        level: { frequency: 523, endFrequency: 1046, duration: 0.24 },
+        error: { frequency: 180, endFrequency: 90, duration: 0.2 }
+      }[type] || { frequency: 660, endFrequency: 880, duration: 0.14 };
+      tonePlayedForClick = true;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const startTime = audioContext.currentTime;
+
       oscillator.type = "square";
-      oscillator.frequency.value = type === "error" ? 115 : type === "level" ? 880 : 660;
-      gain.gain.setValueAtTime(.035, audio.currentTime);
-      gain.gain.exponentialRampToValueAtTime(.001, audio.currentTime + .13);
-      oscillator.connect(gain); gain.connect(audio.destination);
-      oscillator.start(); oscillator.stop(audio.currentTime + .13);
-      oscillator.onended = () => audio.close();
+      oscillator.frequency.setValueAtTime(settings.frequency, startTime);
+      oscillator.frequency.exponentialRampToValueAtTime(settings.endFrequency, startTime + settings.duration);
+      gain.gain.setValueAtTime(0.08, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + settings.duration);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(startTime + settings.duration);
     } catch (error) { console.error("Audio playback failed:", error); }
   }
 
@@ -579,12 +598,50 @@
   }
 
   function bindArcadeEvents() {
+    document.addEventListener("click", () => {
+      tonePlayedForClick = false;
+    }, true);
+    document.addEventListener("click", () => {
+      if (state.soundOn && !tonePlayedForClick) playTone("click");
+    });
+
     $("#sound-toggle").addEventListener("click", event => {
-      state.soundOn = !state.soundOn;
-      event.currentTarget.textContent = state.soundOn ? "SOUND" : "MUTE";
-      event.currentTarget.setAttribute("aria-label", state.soundOn ? "Turn sound off" : "Turn sound on");
-      event.currentTarget.title = state.soundOn ? "Sound on" : "Sound off";
-      if (state.soundOn) playTone("coin");
+      const button = event.currentTarget;
+      if (state.soundOn) {
+        state.soundOn = false;
+        button.textContent = "MUTE";
+        button.setAttribute("aria-label", "Turn sound on");
+        button.title = "Sound off";
+        return;
+      }
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) {
+        console.error("Audio playback failed: Web Audio API is not supported in this browser.");
+        showToast("AUDIO NOT SUPPORTED IN THIS BROWSER");
+        return;
+      }
+
+      try {
+        audioContext = audioContext || new AudioContext();
+        const startSound = audioContext.state === "suspended"
+          ? audioContext.resume()
+          : Promise.resolve();
+
+        startSound.then(() => {
+          state.soundOn = true;
+          button.textContent = "SOUND";
+          button.setAttribute("aria-label", "Turn sound off");
+          button.title = "Sound on";
+          playTone("coin");
+        }).catch(error => {
+          console.error("Audio playback failed:", error);
+          showToast("AUDIO COULD NOT START — CHECK BROWSER SETTINGS");
+        });
+      } catch (error) {
+        console.error("Audio playback failed:", error);
+        showToast("AUDIO COULD NOT START — CHECK BROWSER SETTINGS");
+      }
     });
   }
 
